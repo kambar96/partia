@@ -149,6 +149,7 @@ if uploaded_file:
         female_percent = results["Sampling Bias"]["result"].get("female", 0)
         st.metric(label="Male Percentage", value=f"{male_percent:.2f}%")
         st.metric(label="Female Percentage", value=f"{female_percent:.2f}%")
+        st.write(f"Score: {results['Sampling Bias']['score']}")
         st.write(results["Sampling Bias"]["interpretation"])
 
         # Visualization
@@ -160,6 +161,7 @@ if uploaded_file:
     # Historical Bias Section
     with st.expander("📜 Historical Bias", expanded=True):
         st.write(results["Historical Bias"]["explanation"])
+        st.write(f"Score: {results['Historical Bias']['score']}")
         st.write(results["Historical Bias"]["interpretation"])
 
     # Proxy Bias Section
@@ -167,16 +169,20 @@ if uploaded_file:
         st.write(results["Proxy Bias"]["explanation"])
         proxy_result = {k: round(v, 2) for k, v in results["Proxy Bias"]["result"].items()}
         st.table(pd.DataFrame(proxy_result.items(), columns=["Variable", "Correlation"]))
+        st.write(f"Score: {results['Proxy Bias']['score']}")
         st.write(results["Proxy Bias"]["interpretation"])
 
     # Observer Bias Section
     with st.expander("👀 Observer Bias", expanded=False):
         st.write(results["Observer Bias"]["explanation"])
+        st.write(f"Score: {results['Observer Bias']['score']}")
         st.write(results["Observer Bias"]["interpretation"])
 
     # Default Male Bias Section
     with st.expander("🚹 Default Male Bias", expanded=False):
         st.write(results["Default Male Bias"]["explanation"])
+        st.write(f"Score: {results['Default Male Bias']['score']}")
         st.write(results["Default Male Bias"]["interpretation"])
+
 else:
     st.info("📂 Please upload a CSV file to analyze.")
