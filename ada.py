@@ -3,6 +3,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
+import numpy as np
 
 st.set_page_config(page_title="Bias Detection Tool", layout="wide")
 
@@ -102,23 +103,20 @@ def get_sampling_score(sampling_result):
     female_percent = sampling_result.get('female', 0)
     bias_difference = abs(male_percent - female_percent)
     
-    # A smaller difference gives a higher score
     return max(1, 10 - (bias_difference // 5))  # Adjust the denominator as needed for your scale
-    
+
 def get_historical_score(current_distribution, reference_distribution):
     male_deviation = abs(current_distribution.get('male', 0) - reference_distribution['male'])
     female_deviation = abs(current_distribution.get('female', 0) - reference_distribution['female'])
     
-    # The lower the deviation, the higher the score
     deviation = max(male_deviation, female_deviation)
     return max(1, 10 - (deviation // 10))  # Adjust as needed
 
 def get_proxy_score(proxy_result):
     max_correlation = max(abs(v) for v in proxy_result.values())  # Max absolute correlation
     
-    # The lower the correlation, the higher the score
     return max(1, 10 - (max_correlation * 10))  # Adjust multiplier as needed
-    
+
 def get_observer_score(observer_result):
     if observer_result == "N/A":
         return 10  # No observer bias
@@ -128,8 +126,29 @@ def get_observer_score(observer_result):
 def get_default_male_score(default_male_result):
     default_male_count = default_male_result.get("Default Male Count", 0)
     
-    # The higher the count, the lower the score
     return max(1, 10 - (default_male_count // 10))  # Adjust as needed
+
+# Function to draw barometer
+def draw_barometer(score):
+    fig, ax = plt.subplots(figsize=(7, 2))
+    
+    # Barometer scale
+    bar = ax.barh([0], [10], color='lightgray', height=0.2)
+    
+    # Score color coding (red: 1-3, orange: 4-7, green: 8-10)
+    color = 'red' if score <= 3 else 'orange' if score <= 7 else 'green'
+    
+    ax.barh([0], [score], color=color, height=0.2)
+    
+    ax.set_xlim(0, 10)
+    ax.set_xticks(np.arange(0, 11, 1))
+    ax.set_xticklabels([str(i) for i in range(1, 11)])
+    ax.set_yticks([])  # Remove y-axis ticks
+    
+    # Score label
+    ax.text(score + 0.1, 0, f"Score: {score}", va='center', fontsize=12, color='black', fontweight='bold')
+    
+    return fig
 
 # Streamlit UI
 if uploaded_file:
@@ -151,18 +170,18 @@ if uploaded_file:
         st.metric(label="Female Percentage", value=f"{female_percent:.2f}%")
         st.write(f"Score: {results['Sampling Bias']['score']}")
         st.write(results["Sampling Bias"]["interpretation"])
-
-        # Visualization
-        fig, ax = plt.subplots()
-        sns.barplot(x=["Male", "Female"], y=[male_percent, female_percent], ax=ax)
-        ax.set_ylabel("Percentage")
-        st.pyplot(fig)
+        
+        # Display the barometer
+        st.pyplot(draw_barometer(results['Sampling Bias']['score']))
 
     # Historical Bias Section
     with st.expander("📜 Historical Bias", expanded=True):
         st.write(results["Historical Bias"]["explanation"])
         st.write(f"Score: {results['Historical Bias']['score']}")
         st.write(results["Historical Bias"]["interpretation"])
+        
+        # Display the barometer
+        st.pyplot(draw_barometer(results['Historical Bias']['score']))
 
     # Proxy Bias Section
     with st.expander("🔗 Proxy Bias", expanded=False):
@@ -171,18 +190,27 @@ if uploaded_file:
         st.table(pd.DataFrame(proxy_result.items(), columns=["Variable", "Correlation"]))
         st.write(f"Score: {results['Proxy Bias']['score']}")
         st.write(results["Proxy Bias"]["interpretation"])
+        
+        # Display the barometer
+        st.pyplot(draw_barometer(results['Proxy Bias']['score']))
 
     # Observer Bias Section
     with st.expander("👀 Observer Bias", expanded=False):
         st.write(results["Observer Bias"]["explanation"])
         st.write(f"Score: {results['Observer Bias']['score']}")
         st.write(results["Observer Bias"]["interpretation"])
+        
+        # Display the barometer
+        st.pyplot(draw_barometer(results['Observer Bias']['score']))
 
     # Default Male Bias Section
     with st.expander("🚹 Default Male Bias", expanded=False):
         st.write(results["Default Male Bias"]["explanation"])
         st.write(f"Score: {results['Default Male Bias']['score']}")
         st.write(results["Default Male Bias"]["interpretation"])
+        
+        # Display the barometer
+        st.pyplot(draw_barometer(results['Default Male Bias']['score']))
 
 else:
     st.info("📂 Please upload a CSV file to analyze.")
