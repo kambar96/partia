@@ -129,6 +129,8 @@ def get_default_male_score(default_male_result):
     return max(1, 10 - (default_male_count // 10))  # Adjust as needed
 
 # Function to draw barometer
+import numpy as np
+
 def draw_barometer(score):
     fig, ax = plt.subplots(figsize=(7, 2))
     
@@ -141,17 +143,20 @@ def draw_barometer(score):
     # Draw the score bar
     ax.barh([0], [score], color=color, height=0.2)
     
-    # Set the limits and ticks for x-axis
+    # Set the limits for x-axis
     ax.set_xlim(0, 10)
-    ax.set_xticks(np.arange(0, 11, 1))  # Set ticks at every integer from 0 to 10
-    ax.set_xticklabels([str(i) for i in range(1, 11)])  # Labels from 1 to 10
-    
     ax.set_yticks([])  # Remove y-axis ticks
     
     # Add the score label
     ax.text(score + 0.1, 0, f"Score: {score}", va='center', fontsize=12, color='black', fontweight='bold')
     
+    # Set tick positions and labels
+    ax.set_xticks(np.arange(0, 11, 1))  # Set ticks at every integer from 0 to 10
+    ax.set_xticks(np.arange(1, 11, 1))  # Set labels from 1 to 10 (start from 1 instead of 0)
+    ax.set_xticklabels([str(i) for i in range(1, 11)])  # Labels from 1 to 10
+    
     return fig
+
 
 # Streamlit UI
 if uploaded_file:
