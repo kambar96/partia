@@ -132,20 +132,23 @@ def get_default_male_score(default_male_result):
 def draw_barometer(score):
     fig, ax = plt.subplots(figsize=(7, 2))
     
-    # Barometer scale
-    bar = ax.barh([0], [10], color='lightgray', height=0.2)
+    # Barometer scale (light gray background for the full scale)
+    ax.barh([0], [10], color='lightgray', height=0.2)
     
     # Score color coding (red: 1-3, orange: 4-7, green: 8-10)
     color = 'red' if score <= 3 else 'orange' if score <= 7 else 'green'
     
+    # Draw the score bar
     ax.barh([0], [score], color=color, height=0.2)
     
+    # Set the limits and ticks for x-axis
     ax.set_xlim(0, 10)
-    ax.set_xticks(np.arange(0, 11, 1))
-    ax.set_xticklabels([str(i) for i in range(1, 11)])
+    ax.set_xticks(np.arange(0, 11, 1))  # Set ticks at every integer from 0 to 10
+    ax.set_xticklabels([str(i) for i in range(1, 11)])  # Labels from 1 to 10
+    
     ax.set_yticks([])  # Remove y-axis ticks
     
-    # Score label
+    # Add the score label
     ax.text(score + 0.1, 0, f"Score: {score}", va='center', fontsize=12, color='black', fontweight='bold')
     
     return fig
