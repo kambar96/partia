@@ -14,9 +14,15 @@ st.title("Bias Detection Tool")
 st.write("Analyze your dataset for potential biases in sampling, historical trends, and more.")
 
 # Sampling Bias Detection
-def detect_sampling_bias(df, gender_column="gender"):
-    distribution = df[gender_column].value_counts(normalize=True) * 100
-    return distribution.to_dict()
+def detect_sampling_bias(df):
+    male_count = df[df['gender'] == 'male'].shape[0]
+    female_count = df[df['gender'] == 'female'].shape[0]
+    
+    total_count = male_count + female_count
+    male_percent = (male_count / total_count) * 100
+    female_percent = (female_count / total_count) * 100
+    
+    return {'male': male_percent, 'female': female_percent}
 
 # Historical Bias Detection
 def detect_historical_bias(df, gender_column, reference_distribution):
@@ -56,12 +62,46 @@ def generate_bias_report(df, reference_distribution):
     proxy_result = detect_proxy_bias(df, "gender", [col for col in df.columns if col != "gender"])
     observer_result = detect_observer_bias(df, "label", "observer") if "label" in df.columns and "observer" in df.columns else "N/A"
     default_male_result = detect_default_male_bias(df, "gender", "male")
+
+def get_sampling_score(sampling_result):
+    male_percent = sampling_result.get('male', 0)
+    female_percent = sampling_result.get('female', 0)
+    bias_difference = abs(male_percent - female_percent)
+    
+    # A smaller difference gives a higher score
+    return max(1, 10 - (bias_difference // 5))  # Adjust the denominator as needed for your scale
+    
+def get_historical_score(current_distribution, reference_distribution):
+    male_deviation = abs(current_distribution.get('male', 0) - reference_distribution['male'])
+    female_deviation = abs(current_distribution.get('female', 0) - reference_distribution['female'])
+    
+    # The lower the deviation, the higher the score
+    deviation = max(male_deviation, female_deviation)
+    return max(1, 10 - (deviation // 10))  # Adjust as needed
+
+def get_proxy_score(proxy_result):
+    max_correlation = max(abs(v) for v in proxy_result.values())  # Max absolute correlation
+    
+    # The lower the correlation, the higher the score
+    return max(1, 10 - (max_correlation * 10))  # Adjust multiplier as needed
+    
+def get_observer_score(observer_result):
+    if observer_result == "N/A":
+        return 10  # No observer bias
+    else:
+        return max(1, 10 - (observer_result * 10))  # Adjust if needed based on how you calculate inconsistencies
+
+def get_default_male_score(default_male_result):
+    default_male_count = default_male_result.get("Default Male Count", 0)
+    
+    # The higher the count, the lower the score
+    return max(1, 10 - (default_male_count // 10))  # Adjust as needed
     
     report = {
-        "Sampling Bias": {
+       "Sampling Bias": {
             "explanation": "This measures whether one gender is overrepresented compared to others.",
             "result": sampling_result,
-            "score": get_sampling_score(sampling_result),
+            "score": get_sampling_score(sampling_result),  # This is where the error occurred
             "interpretation": f"Your gender split is: Male: {sampling_result.get('male', 0)}%, Female: {sampling_result.get('female', 0)}%. Your data indicates that your sample is biased towards {'men' if sampling_result.get('male', 0) > sampling_result.get('female', 0) else 'women'}. Try increasing the sample size with more {'female' if sampling_result.get('male', 0) > sampling_result.get('female', 0) else 'male'} participants to improve the gender representation."
         },
         "Historical Bias": {
