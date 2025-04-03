@@ -22,7 +22,6 @@ st.markdown(
 st.title("Partia")
 st.write("Analyse your dataset for potential biases in sampling, historical trends, and more.")
 
-st.title("Upload Data")
 uploaded_file = st.file_uploader("", type=["csv"])
 
 # Sampling Bias Detection
