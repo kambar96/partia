@@ -21,7 +21,7 @@ st.markdown(
 )
 
 # Sidebar
-st.sidebar.image("/mnt/data/Partia landscape image template.png", use_column_width=True)
+st.image("/mnt/data/Partia landscape image template.png", use_column_width=True)
 st.sidebar.title("Upload Data")
 uploaded_file = st.sidebar.file_uploader("", type=["csv"])
 
