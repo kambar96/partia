@@ -20,10 +20,8 @@ st.markdown(
 )
 
 st.title("Partia")
-st.write("Analyze your dataset for potential biases in sampling, historical trends, and more.")
+st.write("Analyse your dataset for potential biases in sampling, historical trends, and more.")
 
-# Sidebar
-st.image("https://raw.githubusercontent.com/kambar96/partia/main/Partia_landscape_image_template.png", use_container_width=True)
 st.title("Upload Data")
 uploaded_file = st.file_uploader("", type=["csv"])
 
