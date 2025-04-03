@@ -20,9 +20,9 @@ st.markdown(
 )
 
 # Sidebar
-st.sidebar.image("https://raw.githubusercontent.com/kambar96/partia/main/Partia_landscape_image_template.png", use_container_width=True)
-st.sidebar.title("Upload Data")
-uploaded_file = st.sidebar.file_uploader("", type=["csv"])
+st.image("https://raw.githubusercontent.com/kambar96/partia/main/Partia_landscape_image_template.png", use_container_width=True)
+st.title("Upload Data")
+uploaded_file = st.file_uploader("", type=["csv"])
 
 st.title("Bias Detection Tool")
 st.write("Analyze your dataset for potential biases in sampling, historical trends, and more.")
