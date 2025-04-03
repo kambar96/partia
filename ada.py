@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
 
-st.set_page_config(page_title="Bias Detection Tool", layout="wide")
+st.set_page_config(page_title="Partia", layout="wide")
 
 # Custom Styling
 st.markdown(
