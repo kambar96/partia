@@ -20,7 +20,7 @@ st.markdown(
 )
 
 # Sidebar
-st.sidebar.image("/mnt/data/Partia landscape image template.png", use_container_width=True)
+st.sidebar.image("https://raw.githubusercontent.com/kambar96/partia/main/Partia_landscape_image_template.png", use_container_width=True)
 st.sidebar.title("Upload Data")
 uploaded_file = st.sidebar.file_uploader("", type=["csv"])
 
