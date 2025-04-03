@@ -14,14 +14,13 @@ st.markdown(
         [data-testid="stSidebar"] {background-color: #f8f9fa;}
         [data-testid="stAppViewContainer"] {background-color: #ffffff;}
         [data-testid="stHeader"] {display: none;}
-        [data-testid="stFileUploader"] div div {display: none;}
         .block-container {padding-top: 2rem;}
     </style>
     """, unsafe_allow_html=True
 )
 
 # Sidebar
-st.image("/mnt/data/Partia landscape image template.png", use_column_width=True)
+st.sidebar.image("/mnt/data/Partia landscape image template.png", use_container_width=True)
 st.sidebar.title("Upload Data")
 uploaded_file = st.sidebar.file_uploader("", type=["csv"])
 
