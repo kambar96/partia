@@ -29,23 +29,29 @@ st.write("Analyze your dataset for potential biases in sampling, historical tren
 
 # Sampling Bias Detection
 def detect_sampling_bias(df):
+    if 'gender' not in df.columns:
+        return {'male': 0, 'female': 0}
     male_count = df[df['gender'] == 'male'].shape[0]
     female_count = df[df['gender'] == 'female'].shape[0]
     
     total_count = male_count + female_count
-    male_percent = (male_count / total_count) * 100
-    female_percent = (female_count / total_count) * 100
+    male_percent = (male_count / total_count) * 100 if total_count > 0 else 0
+    female_percent = (female_count / total_count) * 100 if total_count > 0 else 0
     
     return {'male': male_percent, 'female': female_percent}
 
 # Historical Bias Detection
 def detect_historical_bias(df, gender_column, reference_distribution):
+    if gender_column not in df.columns:
+        return {}
     current_distribution = df[gender_column].value_counts(normalize=True) * 100
     deviation = (current_distribution - pd.Series(reference_distribution)).abs()
     return deviation.to_dict()
 
 # Proxy Bias Detection
 def detect_proxy_bias(df, gender_column, proxy_columns):
+    if gender_column not in df.columns:
+        return {}
     le = LabelEncoder()
     df[gender_column] = le.fit_transform(df[gender_column])
     
@@ -60,12 +66,16 @@ def detect_proxy_bias(df, gender_column, proxy_columns):
 
 # Observer Bias Detection
 def detect_observer_bias(df, label_column, observer_column):
+    if label_column not in df.columns or observer_column not in df.columns:
+        return {}
     observer_groups = df.groupby(observer_column)[label_column].value_counts(normalize=True)
     inconsistencies = observer_groups.groupby(level=0).std()
     return inconsistencies.to_dict()
 
 # Default Male Bias Detection
 def detect_default_male_bias(df, gender_column, default_value):
+    if gender_column not in df.columns:
+        return {"Default Male Count": 0}
     default_males = df[df[gender_column] == default_value].shape[0]
     return {"Default Male Count": default_males}
 
