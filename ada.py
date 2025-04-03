@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
 
-st.set_page_config(page_title="Partia", layout="wide")
+st.set_page_config(page_title="Bias Detection Tool", layout="wide")
 
 # Custom Styling
 st.markdown(
@@ -19,10 +19,13 @@ st.markdown(
     """, unsafe_allow_html=True
 )
 
-st.title("Partia")
-st.write("Analyse your dataset for potential biases in sampling, historical trends, and more.")
+# Sidebar
+st.sidebar.image("https://raw.githubusercontent.com/kambar96/partia/main/Partia_landscape_image_template.png", use_container_width=True)
+st.sidebar.title("Upload Data")
+uploaded_file = st.sidebar.file_uploader("", type=["csv"])
 
-uploaded_file = st.file_uploader("", type=["csv"])
+st.title("Bias Detection Tool")
+st.write("Analyze your dataset for potential biases in sampling, historical trends, and more.")
 
 # Sampling Bias Detection
 def detect_sampling_bias(df):
@@ -98,6 +101,8 @@ if uploaded_file:
         "Sampling Bias": detect_sampling_bias(df),
         "Historical Bias": detect_historical_bias(df, "gender", reference_distribution),
         "Proxy Bias": detect_proxy_bias(df, "gender", [col for col in df.columns if col != "gender"]),
+        "Observer Bias": detect_observer_bias(df, "label", "observer"),
+        "Default Male Bias": detect_default_male_bias(df, "gender", "male")
     }
 
     st.subheader("Bias Report")
@@ -117,5 +122,15 @@ if uploaded_file:
         proxy_result = {k: round(v, 2) for k, v in results["Proxy Bias"].items()}
         st.table(pd.DataFrame(proxy_result.items(), columns=["Variable", "Correlation"]))
         st.pyplot(draw_barometer(5))
+
+    # Observer Bias Section
+    with st.expander("👀 Observer Bias", expanded=False):
+        st.write(results["Observer Bias"])
+        st.pyplot(draw_barometer(6))
+
+    # Default Male Bias Section
+    with st.expander("🚹 Default Male Bias", expanded=False):
+        st.metric(label="Default Male Count", value=f"{results['Default Male Bias'].get('Default Male Count', 0)}")
+        st.pyplot(draw_barometer(4))
 else:
     st.info("📂 Please upload a CSV file to analyze.")
