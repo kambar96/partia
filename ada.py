@@ -32,7 +32,6 @@ st.markdown(
 st.title("Partia")
 st.write("Analyze your dataset for potential biases in sampling, historical trends, and more.")
 
-# Upload section
 uploaded_file = st.sidebar.file_uploader("📂 Upload a CSV file", type=["csv"])
 
 if uploaded_file:
@@ -41,16 +40,36 @@ if uploaded_file:
         st.subheader("Dataset Preview")
         st.dataframe(df.head())
 
-        # Column mapping
+        # --- Smart column auto-detection ---
+        def find_column(possible_names):
+            for col in df.columns:
+                if col.strip().lower() in [name.lower() for name in possible_names]:
+                    return col
+            return "None"
+
+        default_gender_column = find_column(["gender", "sex", "biological sex"])
+        default_observer_column = find_column(["observer", "researcher", "owner"])
+
+        if "gender_column" not in st.session_state:
+            st.session_state.gender_column = default_gender_column
+        if "observer_column" not in st.session_state:
+            st.session_state.observer_column = default_observer_column
+
+        # Column Mapping UI
         st.subheader("Step 1: Column Mapping")
-        gender_column = st.selectbox("Select gender column (required):", ["None"] + list(df.columns))
-        observer_column = st.selectbox("Select observer column (optional):", ["None"] + list(df.columns))
+        gender_column = st.selectbox("Select gender column (required):", ["None"] + list(df.columns),
+                                     index=(["None"] + list(df.columns)).index(st.session_state.gender_column))
+        observer_column = st.selectbox("Select observer column (optional):", ["None"] + list(df.columns),
+                                       index=(["None"] + list(df.columns)).index(st.session_state.observer_column))
+
+        # Save latest selections
+        st.session_state.gender_column = gender_column
+        st.session_state.observer_column = observer_column
 
         if gender_column == "None":
             st.error("🚫 This data is not sex-disaggregated. Please update your file with the required data and upload again.")
             st.stop()
 
-        # Handle observer logic
         if observer_column == "None":
             choice = st.radio("⚠️ No observer column selected. Continue without observer bias analysis?", ["Yes", "No"])
             if choice == "No":
@@ -59,11 +78,6 @@ if uploaded_file:
             allow_observer_analysis = False
         else:
             allow_observer_analysis = True
-
-        # Save to session state
-        st.session_state["gender_column"] = gender_column
-        st.session_state["observer_column"] = observer_column
-        st.session_state["allow_observer_analysis"] = allow_observer_analysis
 
         # Bias detection functions
         def detect_sampling_bias(df):
