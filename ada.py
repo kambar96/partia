@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -30,7 +31,7 @@ st.markdown(
 )
 
 st.title("Partia")
-st.write("Analyze your dataset for potential sampling, proxy, and observer bias.")
+st.write("Analyze your dataset for potential biases in sampling, historical trends, and more.")
 
 uploaded_file = st.sidebar.file_uploader("📂 Upload a CSV file", type=["csv"])
 
@@ -84,6 +85,11 @@ if uploaded_file:
             value_counts = df[gender_column].value_counts(normalize=True) * 100
             return value_counts.to_dict()
 
+        def detect_historical_bias(df, reference_dist):
+            current = df[gender_column].astype(str).str.lower().value_counts(normalize=True) * 100
+            deviation = (current - pd.Series(reference_dist)).abs()
+            return deviation.to_dict()
+
         def detect_proxy_bias(df):
             le = LabelEncoder()
             df[gender_column] = le.fit_transform(df[gender_column].astype(str).str.lower())
@@ -98,6 +104,10 @@ if uploaded_file:
             inconsistencies = observer_groups.groupby(level=0).std()
             return inconsistencies.mean()
 
+        def detect_default_male_bias(df):
+            df[gender_column] = df[gender_column].astype(str).str.lower()
+            return {"Default Male Count": df[df[gender_column] == 'male'].shape[0]}
+
         # Scoring functions
         def get_sampling_score(distribution):
             if not distribution:
@@ -105,6 +115,15 @@ if uploaded_file:
             ratios = np.array(list(distribution.values())) / 100
             ideal = 1 / len(ratios)
             imbalance = np.sum(np.abs(ratios - ideal))
+            score = max(1, round(10 * (1 - imbalance), 2))
+            return score
+
+        def get_historical_score(current, reference):
+            male = current.get('male', 0)
+            female = current.get('female', 0)
+            total = male + female
+            if total == 0: return 1
+            imbalance = abs((male / total) - (reference["male"] / 100)) * 2
             return max(1, round(10 * (1 - imbalance), 2))
 
         def get_proxy_score(res):
@@ -115,6 +134,9 @@ if uploaded_file:
         def get_observer_score(value):
             if value == "N/A": return 10
             return max(1, round(10 * (1 - min(value, 1)), 2))
+
+        def get_default_male_score(res):
+            return max(1, 10 - int(res.get("Default Male Count", 0) // 10))
 
         def draw_barometer(score):
             fig, ax = plt.subplots(figsize=(4, 0.5))
@@ -137,13 +159,16 @@ if uploaded_file:
                 lines.append(f"Raw Results: {data['result']}")
                 lines.append(f"Bias Score: {data['score']}")
                 lines.append(f"Interpretation: {data['interpretation']}")
-                lines.append("")
+                lines.append("")  # Spacer line
             return "\n".join(lines)
 
         # Run analysis
+        reference_distribution = {"male": 50, "female": 50}
         sampling_result = detect_sampling_bias(df)
+        historical_result = detect_historical_bias(df, reference_distribution)
         proxy_result = detect_proxy_bias(df)
         observer_result = detect_observer_bias(df) if allow_observer_analysis and "label" in df.columns else "N/A"
+        default_male_result = detect_default_male_bias(df)
 
         # Build report
         report = {}
@@ -157,6 +182,15 @@ if uploaded_file:
             "score": get_sampling_score(sampling_result),
             "interpretation": f"Your gender distribution is: {distribution_text}. "
                               f"The dataset is skewed towards {dominant_group}. Consider including more participants from underrepresented gender categories."
+        }
+
+        report["📜 Historical Bias"] = {
+            "explanation": "This compares your current dataset to historical data to highlight past inequalities.",
+            "result": historical_result,
+            "score": get_historical_score(sampling_result, reference_distribution),
+            "interpretation": f"Historical reference: Male({reference_distribution['male']}%), Female({reference_distribution['female']}%). "
+                              f"Current data: Male({sampling_result.get('male', 0):.1f}%), Female({sampling_result.get('female', 0):.1f}%). "
+                              f"Your data shows a stronger representation of {'men' if sampling_result.get('male', 0) > reference_distribution['male'] else 'women'} compared to historical benchmarks."
         }
 
         proxy_bias_flag = any(abs(v) > 0.5 for v in proxy_result.values())
@@ -176,16 +210,29 @@ if uploaded_file:
                 "interpretation": "Your dataset shows variation between how different observers label entries. This may indicate observer bias that requires further review."
             }
 
+        report["🙹 Default Male Bias"] = {
+            "explanation": "This checks if 'male' is used as the default gender category, which can lead to bias.",
+            "result": default_male_result,
+            "score": get_default_male_score(default_male_result),
+            "interpretation": "No 'default male' bias detected." if default_male_result["Default Male Count"] == 0
+                              else "Your dataset defaults to 'male' in some cases. Consider reviewing default values for neutrality."
+        }
+
         # Display report
         st.subheader("Bias Report")
-
+        
+        # Generate downloadable report text
         text_report = generate_text_report(report)
+
+        # Export button
         st.download_button(
-            label="📥 Download Bias Report (.txt)",
-            data=text_report,
-            file_name="partia_bias_report.txt",
-            mime="text/plain"
+        label="📥 Download Bias Report (.txt)",
+        data=text_report,
+        file_name="partia_bias_report.txt",
+        mime="text/plain"
         )
+
+
 
         for bias_type, data in report.items():
             with st.container():
@@ -201,6 +248,8 @@ if uploaded_file:
                         proxy_df = pd.DataFrame(data["result"].items(), columns=["Variable", "Correlation"]).round(2)
                         st.markdown("**Correlation with gender:**")
                         st.table(proxy_df)
+                    elif bias_type == "🙹 Default Male Bias":
+                        st.markdown(f"**Male defaults detected:** {data['result'].get('Default Male Count', 0)}")
                     else:
                         st.markdown("**Raw Results:**")
                         st.write(data["result"])
