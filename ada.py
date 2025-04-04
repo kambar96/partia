@@ -229,8 +229,19 @@ if uploaded_file:
                         proxy_df = pd.DataFrame(data["result"].items(), columns=["Variable", "Correlation"]).round(2)
                         st.markdown("**Correlation with gender by variable:**")
                         st.table(proxy_df)
-                        for line in data["details"]:
-                            st.markdown(f"- {line}")
+
+                for i, line in enumerate(data["details"]):
+                    variable = proxy_df.iloc[i]["Variable"]
+                    corr = abs(proxy_df.iloc[i]["Correlation"])
+                    color = "green"
+                if corr > 0.75:
+                    color = "red"
+                elif 0.56 <= corr <= 0.75:
+                    color = "orange"
+
+                with st.expander(f"{variable}"):
+                    st.markdown(f"<span style='color:{color}'>{line}</span>", unsafe_allow_html=True)
+
                     else:
                         st.markdown("**Raw Results:**")
                         st.write(data["result"])
