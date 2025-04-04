@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,7 +7,7 @@ import numpy as np
 st.set_page_config(page_title="Partia", layout="wide")
 
 # Custom CSS
-st.markdown(\"""
+st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
 html, body, [class*="css"], .stTextInput, .stSelectbox, .stMarkdown, .stDataFrame, .stTable, .stTooltip {
@@ -22,7 +21,7 @@ h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
     background-color: #5e17eb;
 }
 </style>
-\""", unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 st.title("Partia")
 st.write("Analyze your dataset for potential sampling, proxy, and observer bias.")
@@ -131,7 +130,7 @@ if uploaded_file:
                     for d in data["details"]:
                         lines.append(f"- {d}")
                 lines.append("")
-            return "\\n".join(lines)
+            return "\n".join(lines)
 
         # Run analysis
         sampling_result = detect_sampling_bias(df)
@@ -175,13 +174,17 @@ if uploaded_file:
             abs_corr = abs(corr)
             if abs_corr > 0.75:
                 interp = f"The variable '{var}' is strongly correlated with gender (correlation: {corr:.2f}). This may indicate proxy bias."
+                color = "red"
             elif 0.56 <= abs_corr <= 0.75:
                 interp = f"The variable '{var}' is moderately correlated with gender (correlation: {corr:.2f}). Consider reviewing its potential influence."
+                color = "orange"
             elif abs_corr < 0.45:
                 interp = f"The variable '{var}' shows little or no correlation with gender (correlation: {corr:.2f}), indicating minimal bias."
+                color = "green"
             else:
                 interp = f"The variable '{var}' has a neutral correlation with gender (correlation: {corr:.2f})."
-            proxy_details.append(interp)
+                color = "green"
+            proxy_details.append((var, interp, color))
 
         report["🔗 Proxy Bias"] = {
             "explanation": "This checks if other variables are strongly correlated with gender, indicating indirect discrimination.",
@@ -230,16 +233,8 @@ if uploaded_file:
                         proxy_df = pd.DataFrame(data["result"].items(), columns=["Variable", "Correlation"]).round(2)
                         st.markdown("**Correlation with gender by variable:**")
                         st.table(proxy_df)
-
-                        for i, line in enumerate(data["details"]):
-                            variable = proxy_df.iloc[i]["Variable"]
-                            corr = abs(proxy_df.iloc[i]["Correlation"])
-                            color = "green"
-                            if corr > 0.75:
-                                color = "red"
-                            elif 0.56 <= corr <= 0.75:
-                                color = "orange"
-                            with st.expander(f"{variable}"):
+                        for var, line, color in data["details"]:
+                            with st.expander(f"{var}"):
                                 st.markdown(f"<span style='color:{color}'>{line}</span>", unsafe_allow_html=True)
                     else:
                         st.markdown("**Raw Results:**")
