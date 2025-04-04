@@ -137,7 +137,6 @@ def get_sampling_score(sampling_result):
     imbalance = abs(male_ratio - 0.5) * 2  # Ranges from 0 to 1
     score = max(1, round(10 * (1 - imbalance), 2))
     return score
-)
 
 def get_historical_score(current_distribution, reference_distribution):
     male_deviation = abs(current_distribution.get('male', 0) - reference_distribution['male'])
