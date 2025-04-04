@@ -229,21 +229,24 @@ if uploaded_file:
                     if bias_type == "🔗 Proxy Bias":
                         proxy_df = pd.DataFrame(data["result"].items(), columns=["Variable", "Correlation"]).round(2)
                         st.markdown("**Correlation with gender by variable:**")
-                        st.table(proxy_df)
-                        for var, line, color in data["details"]:
-                            with st.expander(f"{var}"):
-                                st.markdown(f"<span style='color:{color}'>{line}</span>", unsafe_allow_html=True)
-                    else:
-                        st.markdown("**Raw Results:**")
-                        st.write(data["result"])
+                        
+                        proxy_df = pd.DataFrame(data["result"].items(), columns=["Variable", "Correlation"]).round(2)
+                        proxy_df["AbsCorrelation"] = proxy_df["Correlation"].abs()
+                        proxy_df = proxy_df.sort_values(by="AbsCorrelation", ascending=False)
 
-                with col3:
-                    st.markdown("**Bias Score**")
-                    st.pyplot(draw_barometer(data["score"]))
+                        st.markdown("**Correlation with gender by variable:**")
+                        for _, row in proxy_df.iterrows():
+                            var = row["Variable"]
+                            corr = row["Correlation"]
+                            abs_corr = abs(corr)
 
-                st.markdown("<hr style='margin: 2rem 0;'>", unsafe_allow_html=True)
+                            if abs_corr > strong_threshold:
+                                color = "red"
+                            elif moderate_threshold <= abs_corr <= strong_threshold:
+                                color = "orange"
+                            else:
+                                color = "green"
 
-    except Exception as e:
-        st.error(f"❌ File upload or processing failed: {e}")
-else:
-    st.info("📂 Please upload a CSV file to analyze.")
+                            st.markdown(f"<span style='color:{color}'><strong>{var}</strong> – {corr:.2f}</span>", unsafe_allow_html=True)
+
+                            
