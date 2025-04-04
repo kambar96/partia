@@ -131,6 +131,12 @@ if uploaded_file:
             return "\n".join(lines)
 
         sampling_result = detect_sampling_bias(df)
+        
+        # Sidebar threshold controls for proxy bias
+        st.sidebar.subheader("🔧 Proxy Bias Thresholds")
+        strong_threshold = st.sidebar.slider("Strong correlation if >", 0.3, 1.0, 0.5, 0.05)
+        moderate_threshold = st.sidebar.slider("Moderate correlation if >", 0.1, strong_threshold, 0.3, 0.05)
+
         proxy_result = detect_proxy_bias(df)
         observer_result = detect_observer_bias(df) if allow_observer_analysis else "N/A"
 
@@ -168,10 +174,10 @@ if uploaded_file:
         proxy_details = []
         for var, corr in proxy_result.items():
             abs_corr = abs(corr)
-            if abs_corr > 0.75:
+            if abs_corr > strong_threshold:
                 interp = f"The variable '{var}' is strongly correlated with gender (correlation: {corr:.2f}). This may indicate proxy bias."
                 color = "red"
-            elif 0.56 <= abs_corr <= 0.75:
+            elif moderate_threshold <= abs_corr <= strong_threshold:
                 interp = f"The variable '{var}' is moderately correlated with gender (correlation: {corr:.2f}). Consider reviewing its potential influence."
                 color = "orange"
             else:
