@@ -5,13 +5,40 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
 
-st.set_page_config(page_title="Bias Detection Tool", layout="wide")
+st.set_page_config(page_title="Partia", layout="wide")
+
+# Custom CSS
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .main {
+        color: #333333;
+    }
+
+    h1, h2, h3 {
+        color: #5e17eb !important;
+        font-family: 'Montserrat', sans-serif;
+    }
+
+    .stProgress > div > div > div > div {
+        background-color: #5e17eb;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # Sidebar
 st.sidebar.title("Upload Data")
 uploaded_file = st.sidebar.file_uploader("Upload a CSV file", type=["csv"])
 
-st.title("Bias Detection Tool")
+st.title("Partia")
 st.write("Analyze your dataset for potential biases in sampling, historical trends, and more.")
 
 # Sampling Bias Detection
@@ -120,79 +147,57 @@ def generate_bias_report(df, reference_distribution):
     }
     return report
 
+# Updated scoring functions
 def get_sampling_score(sampling_result):
     male_percent = sampling_result.get('male', 0)
     female_percent = sampling_result.get('female', 0)
-
-    # Total % might not equal 100 if other genders exist, so use just male and female
     total = male_percent + female_percent
     if total == 0:
-        return 1  # No data to assess
-
-    # Normalize percentages
+        return 1
     male_ratio = male_percent / total
-    female_ratio = female_percent / total
-
-    # Calculate imbalance as deviation from 0.5 (perfect balance)
-    imbalance = abs(male_ratio - 0.5) * 2  # Ranges from 0 to 1
-    score = max(1, round(10 * (1 - imbalance), 2))
-    return score
+    imbalance = abs(male_ratio - 0.5) * 2
+    return max(1, round(10 * (1 - imbalance), 2))
 
 def get_historical_score(current_distribution, reference_distribution):
     male_current = current_distribution.get('male', 0)
     female_current = current_distribution.get('female', 0)
-
     total = male_current + female_current
     if total == 0:
         return 1
-
     male_ratio = male_current / total
-    female_ratio = female_current / total
-
     ref_male_ratio = reference_distribution['male'] / 100
-    ref_female_ratio = reference_distribution['female'] / 100
-
-    imbalance = abs(male_ratio - ref_male_ratio) + abs(female_ratio - ref_female_ratio)
-    imbalance = min(imbalance, 1)  # Cap at 1
-    score = max(1, round(10 * (1 - imbalance), 2))
-    return score
-
+    imbalance = abs(male_ratio - ref_male_ratio) * 2
+    return max(1, round(10 * (1 - imbalance), 2))
 
 def get_proxy_score(proxy_result):
     if not proxy_result:
         return 1
-    max_correlation = max(abs(v) for v in proxy_result.values())
-    max_correlation = min(max_correlation, 1)  # Cap at 1
-    score = max(1, round(10 * (1 - max_correlation), 2))
-    return score
-
+    max_corr = max(abs(v) for v in proxy_result.values())
+    return max(1, round(10 * (1 - min(max_corr, 1)), 2))
 
 def get_observer_score(observer_result):
     if observer_result == "N/A":
         return 10
-    observer_result = min(observer_result, 1)  # Cap at 1
-    score = max(1, round(10 * (1 - observer_result), 2))
-    return score
-
+    return max(1, round(10 * (1 - min(observer_result, 1)), 2))
 
 def get_default_male_score(default_male_result):
     default_male_count = default_male_result.get("Default Male Count", 0)
     return max(1, 10 - int(default_male_count // 10))
 
-# Draw barometer
+# Smaller barometer
 def draw_barometer(score):
-    fig, ax = plt.subplots(figsize=(7, 2))
+    fig, ax = plt.subplots(figsize=(4, 0.5))
     ax.barh([0], [10], color='lightgray', height=0.2)
     color = 'red' if score <= 3 else 'orange' if score <= 7 else 'green'
     ax.barh([0], [score], color=color, height=0.2)
     ax.set_xlim(0, 10)
     ax.set_yticks([])
-    ax.text(score + 0.1, 0, f"Score: {score}", va='center', fontsize=12, color='black', fontweight='bold')
+    ax.text(score + 0.1, 0, f"Score: {score}", va='center', fontsize=10, color='black', fontweight='bold')
     ax.set_xticks(np.arange(1, 11, 1))
     ax.set_xticklabels([str(i) for i in range(1, 11)])
     return fig
 
-# Streamlit UI
+# UI
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
     st.subheader("Dataset Preview")
@@ -203,24 +208,31 @@ if uploaded_file:
 
     st.subheader("Bias Report")
     for bias_type, data in results.items():
-        with st.expander(f"{bias_type}", expanded=(bias_type == "📊 Sampling Bias")):
-            st.markdown(f"**What this measures:** {data['explanation']}")
-            st.markdown("---")
+        with st.container():
+            col1, col2, col3 = st.columns([2, 3, 1])
 
-            if bias_type == "🔗 Proxy Bias":
-                proxy_df = pd.DataFrame(data["result"].items(), columns=["Variable", "Correlation"]).round(2)
-                st.write("**Correlation with gender:**")
-                st.table(proxy_df)
-            elif bias_type == "🙹 Default Male Bias":
-                st.write(f"**Male defaults detected:** {data['result'].get('Default Male Count', 0)}")
-            else:
-                st.write("**Raw Results:**")
-                st.write(data["result"])
+            with col1:
+                st.markdown(f"### {bias_type}")
+                st.markdown(f"*{data['explanation']}*")
+                st.markdown("---")
+                st.markdown("**Interpretation:**")
+                st.info(data["interpretation"])
 
-            st.markdown("**Interpretation:**")
-            st.info(data["interpretation"])
+            with col2:
+                if bias_type == "🔗 Proxy Bias":
+                    proxy_df = pd.DataFrame(data["result"].items(), columns=["Variable", "Correlation"]).round(2)
+                    st.markdown("**Correlation with gender:**")
+                    st.table(proxy_df)
+                elif bias_type == "🙹 Default Male Bias":
+                    st.markdown(f"**Male defaults detected:** {data['result'].get('Default Male Count', 0)}")
+                else:
+                    st.markdown("**Raw Results:**")
+                    st.write(data["result"])
 
-            st.markdown("**Bias Score:**")
-            st.pyplot(draw_barometer(data["score"]))
+            with col3:
+                st.markdown("**Bias Score**")
+                st.pyplot(draw_barometer(data["score"]))
+
+            st.markdown("<hr style='margin: 2rem 0;'>", unsafe_allow_html=True)
 else:
     st.info("📂 Please upload a CSV file to analyze.")
