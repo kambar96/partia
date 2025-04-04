@@ -62,7 +62,6 @@ if uploaded_file:
         observer_column = st.selectbox("Select observer column (optional):", ["None"] + list(df.columns),
                                        index=(["None"] + list(df.columns)).index(st.session_state.observer_column))
 
-        # Save latest selections
         st.session_state.gender_column = gender_column
         st.session_state.observer_column = observer_column
 
@@ -82,12 +81,8 @@ if uploaded_file:
         # Bias detection functions
         def detect_sampling_bias(df):
             df[gender_column] = df[gender_column].astype(str).str.lower()
-            male = df[df[gender_column] == 'male'].shape[0]
-            female = df[df[gender_column] == 'female'].shape[0]
-            total = male + female
-            if total == 0:
-                return {'male': 0, 'female': 0}
-            return {'male': (male / total) * 100, 'female': (female / total) * 100}
+            value_counts = df[gender_column].value_counts(normalize=True) * 100
+            return value_counts.to_dict()
 
         def detect_historical_bias(df, reference_dist):
             current = df[gender_column].astype(str).str.lower().value_counts(normalize=True) * 100
@@ -113,13 +108,14 @@ if uploaded_file:
             return {"Default Male Count": df[df[gender_column] == 'male'].shape[0]}
 
         # Scoring functions
-        def get_sampling_score(res):
-            male = res.get('male', 0)
-            female = res.get('female', 0)
-            total = male + female
-            if total == 0: return 1
-            imbalance = abs((male / total) - 0.5) * 2
-            return max(1, round(10 * (1 - imbalance), 2))
+        def get_sampling_score(distribution):
+            if not distribution:
+                return 1
+            ratios = np.array(list(distribution.values())) / 100
+            ideal = 1 / len(ratios)
+            imbalance = np.sum(np.abs(ratios - ideal))
+            score = max(1, round(10 * (1 - imbalance), 2))
+            return score
 
         def get_historical_score(current, reference):
             male = current.get('male', 0)
@@ -164,13 +160,15 @@ if uploaded_file:
         # Build report
         report = {}
 
+        distribution_text = ', '.join([f"{k.capitalize()}: {v:.1f}%" for k, v in sampling_result.items()])
+        dominant_group = max(sampling_result, key=sampling_result.get)
+
         report["📊 Sampling Bias"] = {
-            "explanation": "This measures whether one gender is overrepresented compared to others.",
+            "explanation": "This measures whether any gender group is overrepresented compared to others.",
             "result": sampling_result,
             "score": get_sampling_score(sampling_result),
-            "interpretation": f"Your gender split is: Male: {sampling_result.get('male', 0):.1f}%, Female: {sampling_result.get('female', 0):.1f}%. "
-                              f"Your data indicates that your sample is biased towards {'men' if sampling_result.get('male', 0) > sampling_result.get('female', 0) else 'women'}. "
-                              f"Try increasing the sample size with more {'female' if sampling_result.get('male', 0) > sampling_result.get('female', 0) else 'male'} participants to improve representation."
+            "interpretation": f"Your gender distribution is: {distribution_text}. "
+                              f"The dataset is skewed towards {dominant_group}. Consider including more participants from underrepresented gender categories."
         }
 
         report["📜 Historical Bias"] = {
