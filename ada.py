@@ -149,6 +149,18 @@ if uploaded_file:
             ax.set_title(f"Score: {score}", fontsize=10, pad=10)
             return fig
 
+        def generate_text_report(report):
+            lines = ["Partia Bias Detection Report", "=" * 30, ""]
+            for bias_name, data in report.items():
+                lines.append(f"{bias_name}")
+                lines.append("-" * len(bias_name))
+                lines.append(f"Explanation: {data['explanation']}")
+                lines.append(f"Raw Results: {data['result']}")
+                lines.append(f"Bias Score: {data['score']}")
+                lines.append(f"Interpretation: {data['interpretation']}")
+                lines.append("")  # Spacer line
+            return "\n".join(lines)
+
         # Run analysis
         reference_distribution = {"male": 50, "female": 50}
         sampling_result = detect_sampling_bias(df)
@@ -207,6 +219,16 @@ if uploaded_file:
 
         # Display report
         st.subheader("Bias Report")
+
+        # Download option
+        text_report = generate_text_report(report)
+        st.download_button(
+            label="📥 Download Bias Report (.txt)",
+            data=text_report,
+            file_name="partia_bias_report.txt",
+            mime="text/plain"
+        )
+
         for bias_type, data in report.items():
             with st.container():
                 col1, col2, col3 = st.columns([2, 3, 1])
