@@ -19,33 +19,33 @@ def detect_sampling_bias(df):
     gender_column = detect_gender_column(df)
     if gender_column is None:
         return {'male': 0, 'female': 0}
-    
-    df[gender_column] = df[gender_column].str.lower()
+
+    df[gender_column] = df[gender_column].astype(str).str.lower()
     male_count = df[df[gender_column] == 'male'].shape[0]
     female_count = df[df[gender_column] == 'female'].shape[0]
-    
+
     total_count = male_count + female_count
     if total_count == 0:
         return {'male': 0, 'female': 0}
 
     male_percent = (male_count / total_count) * 100
     female_percent = (female_count / total_count) * 100
-    
+
     return {'male': male_percent, 'female': female_percent}
 
 # Historical Bias Detection
 def detect_historical_bias(df, gender_column, reference_distribution):
     if gender_column not in df.columns:
         return {"male": 0, "female": 0}
-    
-    current_distribution = df[gender_column].str.lower().value_counts(normalize=True) * 100
+
+    current_distribution = df[gender_column].astype(str).str.lower().value_counts(normalize=True) * 100
     deviation = (current_distribution - pd.Series(reference_distribution)).abs()
     return deviation.to_dict()
 
 # Proxy Bias Detection
 def detect_proxy_bias(df, gender_column, proxy_columns):
     le = LabelEncoder()
-    df[gender_column] = le.fit_transform(df[gender_column].str.lower())
+    df[gender_column] = le.fit_transform(df[gender_column].astype(str).str.lower())
 
     for col in proxy_columns:
         if df[col].dtype == "object":
@@ -62,7 +62,7 @@ def detect_observer_bias(df, label_column, observer_column):
 
 # Default Male Bias Detection
 def detect_default_male_bias(df, gender_column, default_value):
-    df[gender_column] = df[gender_column].str.lower()
+    df[gender_column] = df[gender_column].astype(str).str.lower()
     default_males = df[df[gender_column] == default_value].shape[0]
     return {"Default Male Count": default_males}
 
