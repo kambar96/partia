@@ -13,17 +13,13 @@ st.markdown(
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: 'Montserrat', sans-serif;
+    html, body, [class*="css"], .stTextInput, .stSelectbox, .stMarkdown, .stDataFrame, .stTable, .stTooltip {
+        font-family: 'Montserrat', sans-serif !important;
     }
 
-    .main {
-        color: #333333;
-    }
-
-    h1, h2, h3 {
+    h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+        font-family: 'Montserrat', sans-serif !important;
         color: #5e17eb !important;
-        font-family: 'Montserrat', sans-serif;
     }
 
     .stProgress > div > div > div > div {
@@ -33,6 +29,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 
 # Sidebar
 st.sidebar.title("Upload Data")
@@ -192,9 +189,9 @@ def draw_barometer(score):
     ax.barh([0], [score], color=color, height=0.2)
     ax.set_xlim(0, 10)
     ax.set_yticks([])
-    ax.text(score + 0.1, 0, f"Score: {score}", va='center', fontsize=10, color='black', fontweight='bold')
     ax.set_xticks(np.arange(1, 11, 1))
     ax.set_xticklabels([str(i) for i in range(1, 11)])
+    ax.set_title(f"Score: {score}", fontsize=10, pad=10)
     return fig
 
 # UI
