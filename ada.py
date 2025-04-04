@@ -251,3 +251,5 @@ if uploaded_file:
                             st.markdown(f"<span style='color:{color}'><strong>{var}</strong> – {corr:.2f}</span>", unsafe_allow_html=True)
 
                             
+    except Exception as e:
+        st.error(f"❌ File upload or processing failed: {e}")
