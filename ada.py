@@ -1,3 +1,4 @@
+corrected_code = '''
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,7 +8,7 @@ import numpy as np
 st.set_page_config(page_title="Partia", layout="wide")
 
 # Custom CSS
-st.markdown("""
+st.markdown(\"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
 html, body, [class*="css"], .stTextInput, .stSelectbox, .stMarkdown, .stDataFrame, .stTable, .stTooltip {
@@ -21,7 +22,7 @@ h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
     background-color: #5e17eb;
 }
 </style>
-""", unsafe_allow_html=True)
+\""", unsafe_allow_html=True)
 
 st.title("Partia")
 st.write("Analyze your dataset for potential sampling, proxy, and observer bias.")
@@ -130,7 +131,7 @@ if uploaded_file:
                     for d in data["details"]:
                         lines.append(f"- {d}")
                 lines.append("")
-            return "\n".join(lines)
+            return "\\n".join(lines)
 
         # Run analysis
         sampling_result = detect_sampling_bias(df)
@@ -140,7 +141,7 @@ if uploaded_file:
         # Build report
         report = {}
 
-        # --- Sampling Bias Interpretation ---
+        # Sampling Bias
         male = sampling_result.get('male', 0)
         female = sampling_result.get('female', 0)
         diff = abs(male - female)
@@ -160,7 +161,7 @@ if uploaded_file:
             "interpretation": sampling_interp
         }
 
-        # --- Proxy Bias Interpretation ---
+        # Proxy Bias
         max_corr = max(abs(v) for v in proxy_result.values()) if proxy_result else 0
         if max_corr > 0.75:
             proxy_summary = "Your data contains variables strongly correlated with gender, suggesting possible proxy bias."
@@ -190,7 +191,7 @@ if uploaded_file:
             "details": proxy_details
         }
 
-        # --- Observer Bias Interpretation ---
+        # Observer Bias
         if allow_observer_analysis and "label" in df.columns:
             if observer_result > 0.75:
                 observer_interp = "There is a high level of inconsistency between observers. This suggests strong observer bias that could distort results."
@@ -230,18 +231,16 @@ if uploaded_file:
                         st.markdown("**Correlation with gender by variable:**")
                         st.table(proxy_df)
 
-                for i, line in enumerate(data["details"]):
-                    variable = proxy_df.iloc[i]["Variable"]
-                    corr = abs(proxy_df.iloc[i]["Correlation"])
-                    color = "green"
-                if corr > 0.75:
-                    color = "red"
-                elif 0.56 <= corr <= 0.75:
-                    color = "orange"
-
-                with st.expander(f"{variable}"):
-                    st.markdown(f"<span style='color:{color}'>{line}</span>", unsafe_allow_html=True)
-
+                        for i, line in enumerate(data["details"]):
+                            variable = proxy_df.iloc[i]["Variable"]
+                            corr = abs(proxy_df.iloc[i]["Correlation"])
+                            color = "green"
+                            if corr > 0.75:
+                                color = "red"
+                            elif 0.56 <= corr <= 0.75:
+                                color = "orange"
+                            with st.expander(f"{variable}"):
+                                st.markdown(f"<span style='color:{color}'>{line}</span>", unsafe_allow_html=True)
                     else:
                         st.markdown("**Raw Results:**")
                         st.write(data["result"])
