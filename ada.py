@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -125,18 +126,17 @@ if uploaded_file:
                 lines.append(f"Interpretation: {data['interpretation']}")
                 if "details" in data:
                     for d in data["details"]:
-                        lines.append(f"- {d[1]}")  # d[1] is the explanation string
+                        lines.append(f"- {d[1]}")
                 lines.append("")
             return "\n".join(lines)
 
-        # Run analysis
         sampling_result = detect_sampling_bias(df)
         proxy_result = detect_proxy_bias(df)
         observer_result = detect_observer_bias(df) if allow_observer_analysis else "N/A"
 
         report = {}
 
-        # Sampling interpretation
+        # Sampling Bias
         male = sampling_result.get('male', 0)
         female = sampling_result.get('female', 0)
         diff = abs(male - female)
@@ -156,7 +156,7 @@ if uploaded_file:
             "interpretation": sampling_interp
         }
 
-        # Proxy interpretation
+        # Proxy Bias
         max_corr = max(abs(v) for v in proxy_result.values()) if proxy_result else 0
         if max_corr > 0.75:
             proxy_summary = "Your data contains variables strongly correlated with gender, suggesting possible proxy bias."
@@ -174,11 +174,8 @@ if uploaded_file:
             elif 0.56 <= abs_corr <= 0.75:
                 interp = f"The variable '{var}' is moderately correlated with gender (correlation: {corr:.2f}). Consider reviewing its potential influence."
                 color = "orange"
-            elif abs_corr < 0.45:
-                interp = f"The variable '{var}' shows little or no correlation with gender (correlation: {corr:.2f}), indicating minimal bias."
-                color = "green"
             else:
-                interp = f"The variable '{var}' has a neutral correlation with gender (correlation: {corr:.2f})."
+                interp = f"The variable '{var}' shows little or no correlation with gender (correlation: {corr:.2f}), indicating minimal bias."
                 color = "green"
             proxy_details.append((var, interp, color))
 
@@ -205,7 +202,6 @@ if uploaded_file:
                 "interpretation": observer_interp
             }
 
-        # Show report
         st.subheader("Bias Report")
         st.download_button(
             label="📥 Download Bias Report (.txt)",
@@ -243,6 +239,5 @@ if uploaded_file:
 
     except Exception as e:
         st.error(f"❌ File upload or processing failed: {e}")
-
 else:
     st.info("📂 Please upload a CSV file to analyze.")
