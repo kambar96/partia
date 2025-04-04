@@ -139,20 +139,41 @@ def get_sampling_score(sampling_result):
     return score
 
 def get_historical_score(current_distribution, reference_distribution):
-    male_deviation = abs(current_distribution.get('male', 0) - reference_distribution['male'])
-    female_deviation = abs(current_distribution.get('female', 0) - reference_distribution['female'])
-    deviation = max(male_deviation, female_deviation)
-    return max(1, 10 - int(deviation // 10))
+    male_current = current_distribution.get('male', 0)
+    female_current = current_distribution.get('female', 0)
+
+    total = male_current + female_current
+    if total == 0:
+        return 1
+
+    male_ratio = male_current / total
+    female_ratio = female_current / total
+
+    ref_male_ratio = reference_distribution['male'] / 100
+    ref_female_ratio = reference_distribution['female'] / 100
+
+    imbalance = abs(male_ratio - ref_male_ratio) + abs(female_ratio - ref_female_ratio)
+    imbalance = min(imbalance, 1)  # Cap at 1
+    score = max(1, round(10 * (1 - imbalance), 2))
+    return score
+
 
 def get_proxy_score(proxy_result):
+    if not proxy_result:
+        return 1
     max_correlation = max(abs(v) for v in proxy_result.values())
-    return max(1, 10 - int(max_correlation * 10))
+    max_correlation = min(max_correlation, 1)  # Cap at 1
+    score = max(1, round(10 * (1 - max_correlation), 2))
+    return score
+
 
 def get_observer_score(observer_result):
     if observer_result == "N/A":
         return 10
-    else:
-        return max(1, 10 - int(observer_result * 10))
+    observer_result = min(observer_result, 1)  # Cap at 1
+    score = max(1, round(10 * (1 - observer_result), 2))
+    return score
+
 
 def get_default_male_score(default_male_result):
     default_male_count = default_male_result.get("Default Male Count", 0)
