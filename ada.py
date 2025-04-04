@@ -148,38 +148,57 @@ if uploaded_file:
         observer_result = detect_observer_bias(df) if allow_observer_analysis and "label" in df.columns else "N/A"
         default_male_result = detect_default_male_bias(df)
 
-        report = {
-            "📊 Sampling Bias": {
-                "explanation": "This measures whether one gender is overrepresented compared to others.",
-                "result": sampling_result,
-                "score": get_sampling_score(sampling_result),
-                "interpretation": f"Your gender split is: Male: {sampling_result.get('male', 0)}%, Female: {sampling_result.get('female', 0)}%."
-            },
-            "📜 Historical Bias": {
-                "explanation": "This compares your current dataset to historical data to highlight past inequalities.",
-                "result": historical_result,
-                "score": get_historical_score(sampling_result, reference_distribution),
-                "interpretation": f"Compared to historical reference: Male({reference_distribution['male']}%), Female({reference_distribution['female']}%)."
-            },
-            "🔗 Proxy Bias": {
-                "explanation": "This checks if other variables are strongly correlated with gender.",
-                "result": proxy_result,
-                "score": get_proxy_score(proxy_result),
-                "interpretation": "High correlation suggests possible proxy bias." if any(abs(v) > 0.5 for v in proxy_result.values()) else "Minimal proxy bias detected."
-            },
-            "👀 Observer Bias": {
-                "explanation": "This identifies inconsistencies in how different people categorize data.",
-                "result": observer_result,
-                "score": get_observer_score(observer_result),
-                "interpretation": "No observer bias detected." if observer_result == "N/A" else "Observer bias may be present in your data."
-            },
-            "🙹 Default Male Bias": {
-                "explanation": "This checks if 'male' is used as the default gender category.",
-                "result": default_male_result,
-                "score": get_default_male_score(default_male_result),
-                "interpretation": "No 'default male' bias detected." if default_male_result["Default Male Count"] == 0 else "Default to 'male' detected in some records."
-            }
-        }
+report = {}
+
+# 📊 Sampling Bias
+report["📊 Sampling Bias"] = {
+    "explanation": "This measures whether one gender is overrepresented compared to others.",
+    "result": sampling_result,
+    "score": get_sampling_score(sampling_result),
+    "interpretation": f"Your gender split is: Male: {sampling_result.get('male', 0):.1f}%, Female: {sampling_result.get('female', 0):.1f}%. "
+                      f"Your data indicates that your sample is biased towards {'men' if sampling_result.get('male', 0) > sampling_result.get('female', 0) else 'women'}. "
+                      f"Try increasing the sample size with more {'female' if sampling_result.get('male', 0) > sampling_result.get('female', 0) else 'male'} participants to improve representation."
+}
+
+# 📜 Historical Bias
+report["📜 Historical Bias"] = {
+    "explanation": "This compares your current dataset to historical data to highlight past inequalities.",
+    "result": historical_result,
+    "score": get_historical_score(sampling_result, reference_distribution),
+    "interpretation": f"Historical reference: Male({reference_distribution['male']}%), Female({reference_distribution['female']}%). "
+                      f"Current data: Male({sampling_result.get('male', 0):.1f}%), Female({sampling_result.get('female', 0):.1f}%). "
+                      f"Your data shows a stronger representation of {'men' if sampling_result.get('male', 0) > reference_distribution['male'] else 'women'} compared to historical benchmarks."
+}
+
+# 🔗 Proxy Bias
+proxy_bias_flag = any(abs(v) > 0.5 for v in proxy_result.values())
+report["🔗 Proxy Bias"] = {
+    "explanation": "This checks if other variables are strongly correlated with gender, indicating indirect discrimination.",
+    "result": proxy_result,
+    "score": get_proxy_score(proxy_result),
+    "interpretation": "Your variables show high correlation with gender, suggesting possible proxy bias." if proxy_bias_flag
+                      else "Low correlation with gender suggests minimal proxy bias in your dataset."
+}
+
+# 👀 Observer Bias (ONLY if observer analysis is allowed)
+if allow_observer_analysis and "label" in df.columns:
+    report["👀 Observer Bias"] = {
+        "explanation": "This identifies inconsistencies in how different people categorize data, which can introduce bias.",
+        "result": observer_result,
+        "score": get_observer_score(observer_result),
+        "interpretation": "Your dataset shows variation between how different observers label entries. This may indicate observer bias that requires further review."
+        if observer_result != "N/A" else "No observer bias detected."
+    }
+
+# 🙹 Default Male Bias
+report["🙹 Default Male Bias"] = {
+    "explanation": "This checks if 'male' is used as the default gender category, which can lead to bias.",
+    "result": default_male_result,
+    "score": get_default_male_score(default_male_result),
+    "interpretation": "No 'default male' bias detected." if default_male_result["Default Male Count"] == 0
+                      else "Your dataset defaults to 'male' in some cases. Consider reviewing default values for neutrality."
+}
+
 
         # Show report
         st.subheader("Bias Report")
