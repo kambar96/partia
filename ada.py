@@ -31,7 +31,6 @@ uploaded_file = st.sidebar.file_uploader("📂 Upload a CSV file", type=["csv"])
 
 if uploaded_file:
     try:
-        # Wrapped logic starts here
         df = pd.read_csv(uploaded_file)
         st.subheader("Dataset Preview")
         st.dataframe(df.head())
@@ -68,6 +67,11 @@ if uploaded_file:
             and observer_column in df.columns
             and "label" in df.columns
         )
+
+        # Proxy Bias Threshold Sliders
+        st.sidebar.subheader("🔧 Proxy Bias Thresholds")
+        strong_threshold = st.sidebar.slider("Strong correlation if >", 0.3, 1.0, 0.5, 0.05)
+        moderate_threshold = st.sidebar.slider("Moderate correlation if >", 0.1, strong_threshold, 0.3, 0.05)
 
         def detect_sampling_bias(df):
             df[gender_column] = df[gender_column].astype(str).str.lower()
@@ -131,19 +135,13 @@ if uploaded_file:
                 lines.append("")
             return "\n".join(lines)
 
-        sampling_result = detect_sampling_bias(df)
-        
-        # Sidebar threshold controls for proxy bias
-        st.sidebar.subheader("🔧 Proxy Bias Thresholds")
-        strong_threshold = st.sidebar.slider("Strong correlation if >", 0.3, 1.0, 0.5, 0.05)
-        moderate_threshold = st.sidebar.slider("Moderate correlation if >", 0.1, strong_threshold, 0.3, 0.05)
 
+        sampling_result = detect_sampling_bias(df)
         proxy_result = detect_proxy_bias(df)
         observer_result = detect_observer_bias(df) if allow_observer_analysis else "N/A"
 
         report = {}
 
-        # Sampling Bias
         male = sampling_result.get('male', 0)
         female = sampling_result.get('female', 0)
         diff = abs(male - female)
@@ -163,11 +161,10 @@ if uploaded_file:
             "interpretation": sampling_interp
         }
 
-        # Proxy Bias
         max_corr = max(abs(v) for v in proxy_result.values()) if proxy_result else 0
-        if max_corr > 0.75:
+        if max_corr > strong_threshold:
             proxy_summary = "Your data contains variables strongly correlated with gender, suggesting possible proxy bias."
-        elif 0.56 <= max_corr <= 0.75:
+        elif moderate_threshold <= max_corr <= strong_threshold:
             proxy_summary = "Some variables show moderate correlation with gender. Consider reviewing their role in your analysis."
         else:
             proxy_summary = "No variables show strong correlation with gender, indicating low risk of proxy bias."
@@ -176,13 +173,13 @@ if uploaded_file:
         for var, corr in proxy_result.items():
             abs_corr = abs(corr)
             if abs_corr > strong_threshold:
-                interp = f"The variable '{var}' is strongly correlated with gender (correlation: {corr:.2f}). This may indicate proxy bias."
+                interp = f"{var} – {corr:.2f}"
                 color = "red"
             elif moderate_threshold <= abs_corr <= strong_threshold:
-                interp = f"The variable '{var}' is moderately correlated with gender (correlation: {corr:.2f}). Consider reviewing its potential influence."
+                interp = f"{var} – {corr:.2f}"
                 color = "orange"
             else:
-                interp = f"The variable '{var}' shows little or no correlation with gender (correlation: {corr:.2f}), indicating minimal bias."
+                interp = f"{var} – {corr:.2f}"
                 color = "green"
             proxy_details.append((var, interp, color))
 
@@ -229,12 +226,8 @@ if uploaded_file:
                 with col2:
                     if bias_type == "🔗 Proxy Bias":
                         proxy_df = pd.DataFrame(data["result"].items(), columns=["Variable", "Correlation"]).round(2)
-                        st.markdown("**Correlation with gender by variable:**")
-                        
-                        proxy_df = pd.DataFrame(data["result"].items(), columns=["Variable", "Correlation"]).round(2)
                         proxy_df["AbsCorrelation"] = proxy_df["Correlation"].abs()
                         proxy_df = proxy_df.sort_values(by="AbsCorrelation", ascending=False)
-
                         st.markdown("**Correlation with gender by variable:**")
                         for _, row in proxy_df.iterrows():
                             var = row["Variable"]
@@ -249,7 +242,18 @@ if uploaded_file:
                                 color = "green"
 
                             st.markdown(f"<span style='color:{color}'><strong>{var}</strong> – {corr:.2f}</span>", unsafe_allow_html=True)
+                    else:
+                        st.markdown("**Raw Results:**")
+                        st.write(data["result"])
 
-                            
+                with col3:
+                    st.markdown("**Bias Score**")
+                    st.pyplot(draw_barometer(data["score"]))
+
+                st.markdown("<hr style='margin: 2rem 0;'>", unsafe_allow_html=True)
+
     except Exception as e:
         st.error(f"❌ File upload or processing failed: {e}")
+
+else:
+    st.info("📂 Please upload a CSV file to analyze.")
