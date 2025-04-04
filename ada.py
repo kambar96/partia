@@ -219,15 +219,19 @@ if uploaded_file:
 
         # Display report
         st.subheader("Bias Report")
-
-        # Download option
+        
+        # Generate downloadable report text
         text_report = generate_text_report(report)
+
+        # Export button
         st.download_button(
-            label="📥 Download Bias Report (.txt)",
-            data=text_report,
-            file_name="partia_bias_report.txt",
-            mime="text/plain"
+        label="📥 Download Bias Report (.txt)",
+        data=text_report,
+        file_name="partia_bias_report.txt",
+        mime="text/plain"
         )
+
+
 
         for bias_type, data in report.items():
             with st.container():
