@@ -7,27 +7,21 @@ import numpy as np
 st.set_page_config(page_title="Partia", layout="wide")
 
 # Custom CSS
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
-
-    html, body, [class*="css"], .stTextInput, .stSelectbox, .stMarkdown, .stDataFrame, .stTable, .stTooltip {
-        font-family: 'Montserrat', sans-serif !important;
-    }
-
-    h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
-        font-family: 'Montserrat', sans-serif !important;
-        color: #5e17eb !important;
-    }
-
-    .stProgress > div > div > div > div {
-        background-color: #5e17eb;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap');
+html, body, [class*="css"], .stTextInput, .stSelectbox, .stMarkdown, .stDataFrame, .stTable, .stTooltip {
+    font-family: 'Montserrat', sans-serif !important;
+}
+h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+    font-family: 'Montserrat', sans-serif !important;
+    color: #5e17eb !important;
+}
+.stProgress > div > div > div > div {
+    background-color: #5e17eb;
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.title("Partia")
 st.write("Analyze your dataset for potential sampling, proxy, and observer bias.")
@@ -40,7 +34,6 @@ if uploaded_file:
         st.subheader("Dataset Preview")
         st.dataframe(df.head())
 
-        # --- Smart column auto-detection ---
         def find_column(possible_names):
             for col in df.columns:
                 if col.strip().lower() in [name.lower() for name in possible_names]:
@@ -55,7 +48,6 @@ if uploaded_file:
         if "observer_column" not in st.session_state:
             st.session_state.observer_column = default_observer_column
 
-        # Column Mapping UI
         st.subheader("Step 1: Column Mapping")
         gender_column = st.selectbox("Select gender column (required):", ["None"] + list(df.columns),
                                      index=(["None"] + list(df.columns)).index(st.session_state.gender_column))
@@ -66,7 +58,7 @@ if uploaded_file:
         st.session_state.observer_column = observer_column
 
         if gender_column == "None":
-            st.error("🚫 This data is not sex-disaggregated. Please update your file with the required data and upload again.")
+            st.error("🚫 This data is not sex-disaggregated. Please update your file and upload again.")
             st.stop()
 
         if observer_column == "None":
@@ -78,7 +70,6 @@ if uploaded_file:
         else:
             allow_observer_analysis = True
 
-        # Bias detection functions
         def detect_sampling_bias(df):
             df[gender_column] = df[gender_column].astype(str).str.lower()
             value_counts = df[gender_column].value_counts(normalize=True) * 100
@@ -98,10 +89,8 @@ if uploaded_file:
             inconsistencies = observer_groups.groupby(level=0).std()
             return inconsistencies.mean()
 
-        # Scoring functions
         def get_sampling_score(distribution):
-            if not distribution:
-                return 1
+            if not distribution: return 1
             ratios = np.array(list(distribution.values())) / 100
             ideal = 1 / len(ratios)
             imbalance = np.sum(np.abs(ratios - ideal))
@@ -137,6 +126,9 @@ if uploaded_file:
                 lines.append(f"Raw Results: {data['result']}")
                 lines.append(f"Bias Score: {data['score']}")
                 lines.append(f"Interpretation: {data['interpretation']}")
+                if "details" in data:
+                    for d in data["details"]:
+                        lines.append(f"- {d}")
                 lines.append("")
             return "\n".join(lines)
 
@@ -148,41 +140,77 @@ if uploaded_file:
         # Build report
         report = {}
 
-        distribution_text = ', '.join([f"{k.capitalize()}: {v:.1f}%" for k, v in sampling_result.items()])
-        dominant_group = max(sampling_result, key=sampling_result.get)
+        # --- Sampling Bias Interpretation ---
+        male = sampling_result.get('male', 0)
+        female = sampling_result.get('female', 0)
+        diff = abs(male - female)
+        if diff <= 1:
+            sampling_interp = "Your dataset shows near-equal representation of men and women, which supports more inclusive and generalisable insights."
+        elif 1 < diff <= 24:
+            group = "men" if male > female else "women"
+            sampling_interp = f"Your dataset contains slightly more {group} (difference of {diff:.1f}%). Consider increasing participation from the underrepresented group."
+        else:
+            group = "men" if male > female else "women"
+            sampling_interp = f"Your dataset contains significantly more {group} (difference of {diff:.1f}%). This may introduce strong bias and limit representativeness."
 
         report["📊 Sampling Bias"] = {
             "explanation": "This measures whether any gender group is overrepresented compared to others.",
             "result": sampling_result,
             "score": get_sampling_score(sampling_result),
-            "interpretation": f"Your gender distribution is: {distribution_text}. "
-                              f"The dataset is skewed towards {dominant_group}. Consider including more participants from underrepresented gender categories."
+            "interpretation": sampling_interp
         }
 
-        proxy_bias_flag = any(abs(v) > 0.5 for v in proxy_result.values())
+        # --- Proxy Bias Interpretation ---
+        max_corr = max(abs(v) for v in proxy_result.values()) if proxy_result else 0
+        if max_corr > 0.75:
+            proxy_summary = "Your data contains variables strongly correlated with gender, suggesting possible proxy bias."
+        elif 0.56 <= max_corr <= 0.75:
+            proxy_summary = "Some variables show moderate correlation with gender. Consider reviewing their role in your analysis."
+        else:
+            proxy_summary = "No variables show strong correlation with gender, indicating low risk of proxy bias."
+
+        proxy_details = []
+        for var, corr in proxy_result.items():
+            abs_corr = abs(corr)
+            if abs_corr > 0.75:
+                interp = f"The variable '{var}' is strongly correlated with gender (correlation: {corr:.2f}). This may indicate proxy bias."
+            elif 0.56 <= abs_corr <= 0.75:
+                interp = f"The variable '{var}' is moderately correlated with gender (correlation: {corr:.2f}). Consider reviewing its potential influence."
+            elif abs_corr < 0.45:
+                interp = f"The variable '{var}' shows little or no correlation with gender (correlation: {corr:.2f}), indicating minimal bias."
+            else:
+                interp = f"The variable '{var}' has a neutral correlation with gender (correlation: {corr:.2f})."
+            proxy_details.append(interp)
+
         report["🔗 Proxy Bias"] = {
             "explanation": "This checks if other variables are strongly correlated with gender, indicating indirect discrimination.",
             "result": proxy_result,
             "score": get_proxy_score(proxy_result),
-            "interpretation": "Your variables show high correlation with gender, suggesting possible proxy bias." if proxy_bias_flag
-                              else "Low correlation with gender suggests minimal proxy bias in your dataset."
+            "interpretation": proxy_summary,
+            "details": proxy_details
         }
 
+        # --- Observer Bias Interpretation ---
         if allow_observer_analysis and "label" in df.columns:
+            if observer_result > 0.75:
+                observer_interp = "There is a high level of inconsistency between observers. This suggests strong observer bias that could distort results."
+            elif 0.56 <= observer_result <= 0.75:
+                observer_interp = "Moderate inconsistency detected in observer responses. While not extreme, this could still affect data quality."
+            else:
+                observer_interp = "Observer responses are consistent, suggesting minimal observer bias."
+
             report["👀 Observer Bias"] = {
                 "explanation": "This identifies inconsistencies in how different people categorize data, which can introduce bias.",
-                "result": observer_result,
+                "result": round(observer_result, 3),
                 "score": get_observer_score(observer_result),
-                "interpretation": "Your dataset shows variation between how different observers label entries. This may indicate observer bias that requires further review."
+                "interpretation": observer_interp
             }
 
-        # Display report
+        # Show report
         st.subheader("Bias Report")
-
-        text_report = generate_text_report(report)
         st.download_button(
             label="📥 Download Bias Report (.txt)",
-            data=text_report,
+            data=generate_text_report(report),
             file_name="partia_bias_report.txt",
             mime="text/plain"
         )
@@ -199,8 +227,10 @@ if uploaded_file:
                 with col2:
                     if bias_type == "🔗 Proxy Bias":
                         proxy_df = pd.DataFrame(data["result"].items(), columns=["Variable", "Correlation"]).round(2)
-                        st.markdown("**Correlation with gender:**")
+                        st.markdown("**Correlation with gender by variable:**")
                         st.table(proxy_df)
+                        for line in data["details"]:
+                            st.markdown(f"- {line}")
                     else:
                         st.markdown("**Raw Results:**")
                         st.write(data["result"])
