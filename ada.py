@@ -31,6 +31,7 @@ uploaded_file = st.sidebar.file_uploader("📂 Upload a CSV file", type=["csv"])
 
 if uploaded_file:
     try:
+        # Wrapped logic starts here
         df = pd.read_csv(uploaded_file)
         st.subheader("Dataset Preview")
         st.dataframe(df.head())
