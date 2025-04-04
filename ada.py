@@ -34,6 +34,25 @@ st.markdown(
 st.sidebar.title("Upload Data")
 uploaded_file = st.sidebar.file_uploader("Upload a CSV file", type=["csv"])
 
+if uploaded_file:
+    st.success("✅ File uploaded!")
+
+    try:
+        df = pd.read_csv(uploaded_file)
+        st.write("### Preview:")
+        st.dataframe(df.head())
+
+        st.write("### Column Mapping")
+        gender_column = st.selectbox("Select gender column:", ["None"] + list(df.columns))
+        observer_column = st.selectbox("Select observer column:", ["None"] + list(df.columns))
+
+        st.write(f"✅ You selected gender column: `{gender_column}`")
+        st.write(f"✅ You selected observer column: `{observer_column}`")
+
+    except Exception as e:
+        st.error(f"❌ Failed to read file: {e}")
+
+
 st.title("Partia")
 st.write("Analyze your dataset for potential biases in sampling, historical trends, and more.")
 
