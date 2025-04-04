@@ -61,14 +61,11 @@ if uploaded_file:
             st.error("🚫 This data is not sex-disaggregated. Please update your file and upload again.")
             st.stop()
 
-        if observer_column == "None":
-            choice = st.radio("⚠️ No observer column selected. Continue without observer bias analysis?", ["Yes", "No"])
-            if choice == "No":
-                st.error("🚫 Please update your file with the required observer data and upload again.")
-                st.stop()
-            allow_observer_analysis = False
-        else:
-            allow_observer_analysis = True
+        allow_observer_analysis = (
+            observer_column != "None"
+            and observer_column in df.columns
+            and "label" in df.columns
+        )
 
         def detect_sampling_bias(df):
             df[gender_column] = df[gender_column].astype(str).str.lower()
@@ -128,19 +125,18 @@ if uploaded_file:
                 lines.append(f"Interpretation: {data['interpretation']}")
                 if "details" in data:
                     for d in data["details"]:
-                        lines.append(f"- {d}")
+                        lines.append(f"- {d[1]}")  # d[1] is the explanation string
                 lines.append("")
             return "\n".join(lines)
 
         # Run analysis
         sampling_result = detect_sampling_bias(df)
         proxy_result = detect_proxy_bias(df)
-        observer_result = detect_observer_bias(df) if allow_observer_analysis and "label" in df.columns else "N/A"
+        observer_result = detect_observer_bias(df) if allow_observer_analysis else "N/A"
 
-        # Build report
         report = {}
 
-        # Sampling Bias
+        # Sampling interpretation
         male = sampling_result.get('male', 0)
         female = sampling_result.get('female', 0)
         diff = abs(male - female)
@@ -160,7 +156,7 @@ if uploaded_file:
             "interpretation": sampling_interp
         }
 
-        # Proxy Bias
+        # Proxy interpretation
         max_corr = max(abs(v) for v in proxy_result.values()) if proxy_result else 0
         if max_corr > 0.75:
             proxy_summary = "Your data contains variables strongly correlated with gender, suggesting possible proxy bias."
@@ -194,8 +190,7 @@ if uploaded_file:
             "details": proxy_details
         }
 
-        # Observer Bias
-        if allow_observer_analysis and "label" in df.columns:
+        if allow_observer_analysis:
             if observer_result > 0.75:
                 observer_interp = "There is a high level of inconsistency between observers. This suggests strong observer bias that could distort results."
             elif 0.56 <= observer_result <= 0.75:
