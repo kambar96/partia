@@ -123,8 +123,21 @@ def generate_bias_report(df, reference_distribution):
 def get_sampling_score(sampling_result):
     male_percent = sampling_result.get('male', 0)
     female_percent = sampling_result.get('female', 0)
-    bias_difference = abs(male_percent - female_percent)
-    return max(1, 10 - int(bias_difference // 5))
+
+    # Total % might not equal 100 if other genders exist, so use just male and female
+    total = male_percent + female_percent
+    if total == 0:
+        return 1  # No data to assess
+
+    # Normalize percentages
+    male_ratio = male_percent / total
+    female_ratio = female_percent / total
+
+    # Calculate imbalance as deviation from 0.5 (perfect balance)
+    imbalance = abs(male_ratio - 0.5) * 2  # Ranges from 0 to 1
+    score = max(1, round(10 * (1 - imbalance), 2))
+    return score
+)
 
 def get_historical_score(current_distribution, reference_distribution):
     male_deviation = abs(current_distribution.get('male', 0) - reference_distribution['male'])
